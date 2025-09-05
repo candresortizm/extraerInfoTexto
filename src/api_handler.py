@@ -1,8 +1,12 @@
 from typing import List
 import uvicorn
-from fastapi import FastAPI, APIRouter, HTTPException, status
+from fastapi import FastAPI, Depends, APIRouter, HTTPException, status
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.responses import JSONResponse
 from extractor.extractor import registrar_texto, listar_textos, RegistroTexto, ObjetoTextoAnalizar, RespuestaRegistro
+from extractor.security import verify_token, SECRET_KEY, ALGORITHM
+import jwt
+from datetime import datetime, timezone, timedelta
 
 app = FastAPI(
     title="InfoTextExtractor",
@@ -42,7 +46,7 @@ v1_router = APIRouter(prefix="/api/v1")
         }
     }
 )
-def cargar_pagina(texto: RegistroTexto) -> ObjetoTextoAnalizar:
+def cargar_texto(texto: RegistroTexto) -> ObjetoTextoAnalizar:
     """
     Registra un nuevo texto en el sistema para análisis.
     
@@ -60,7 +64,7 @@ def cargar_pagina(texto: RegistroTexto) -> ObjetoTextoAnalizar:
         )
     
 @v1_router.get(
-    "/ver_textos",
+    "/queries",
     response_model=List[ObjetoTextoAnalizar],
     summary="Obtener todos los textos registrados",
     description="Retorna un listado de todos los textos que han sido registrados en el sistema, incluyendo sus análisis y entidades extraídas (si los tiene).",
@@ -88,15 +92,51 @@ def cargar_pagina(texto: RegistroTexto) -> ObjetoTextoAnalizar:
         }
     }
 )
-def get_tables() -> List[ObjetoTextoAnalizar]:
+def get_textos(_: None = Depends(verify_token)) -> List[ObjetoTextoAnalizar]:
     """
     Obtiene todos los textos registrados en el sistema.
     
     Retorna una lista completa de todos los textos que han sido registrados,
     incluyendo sus metadatos, resultados de análisis y entidades extraídas.
     """
-    response = listar_textos()
-    return response
+    try:
+        response = listar_textos()
+        return response
+    except jwt.ExpiredSignatureError:
+        raise
+    except jwt.InvalidTokenError:
+        raise
+    except Exception as err:
+        raise HTTPException(status_code=400, detail=f"Ocurrió una excepción {err=}, {type(err)=}")
+    
+
+
+@v1_router.post("/login",
+    status_code=status.HTTP_200_OK,
+    summary="Método de inicio de sesión",
+    description="Retorna un nuevo token (jwt), si el loggeo fue exitoso.",
+    responses={
+        200: {
+            "description": "Token generado correctamente.",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "access_token": "abcd1234"
+                    }
+                }
+            }
+        }
+    })
+def login():
+    try:
+        payload = {
+            "sub": "usuario_prueba",
+            "exp": datetime.now(timezone.utc) + timedelta(minutes=1)  # el token expira en 1 minuto
+        }
+        token = jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
+        return {"access_token": token}
+    except Exception as err:
+        raise HTTPException(status_code=400, detail=f"Ocurrió una excepción {err=}, {type(err)=}")
     
 app.include_router(v1_router)
 
