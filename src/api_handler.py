@@ -1,9 +1,8 @@
 from typing import List
 import uvicorn
 from fastapi import FastAPI, Depends, APIRouter, HTTPException, status, Body
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from fastapi.responses import JSONResponse
 from extractor.servicios import registrar_texto, listar_textos, ObjetoTextoAnalizar, RespuestaRegistro, servicio_analizar_texto
+from extractor.models import RespuestaRegistro, ObjetoTextoAnalizar, RespuestaAnalisis
 from extractor.security import verify_token, SECRET_KEY, ALGORITHM
 import jwt
 from datetime import datetime, timezone, timedelta
@@ -64,18 +63,51 @@ def cargar_texto(texto: str = Body(..., media_type="text/plain")) -> ObjetoTexto
             detail=f"Error al procesar el texto: {str(err)}"
         )
 
-@v1_router.post("/document/{texto_id}/analyze")
-def post_analizar_texto(texto_id: int):
+@v1_router.post("/document/{texto_id}/analyze",
+    response_model=RespuestaAnalisis,
+    status_code=status.HTTP_200_OK,
+    summary="Análisis de un texto previamente registrado.",
+    description="Hace el llamado del LLM con el texto cargado, retorna el resumen y el listado de entidades. Si ya se había analizado, responde lo previamente obtenido, sin llamar al LLM.",
+    responses={
+        200: {
+            "description": "Texto analizado exitosamente",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "resumen": "Acá se presenta el resumen del texto cargado.",
+                        "entidades": ["uno","dos","tres"]
+                    }
+                }
+            }
+        },
+        400: {
+            "description": "Error en la solicitud",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Error al procesar el texto"
+                    }
+                }
+            }
+        }
+    })
+def post_analizar_texto(texto_id: int) -> RespuestaAnalisis:
     """
-    Registra un nuevo texto en el sistema para análisis.
+    Realiza el análisis.
     
-    - **texto**: El texto que se desea analizar posteriormente
+    - **texto_id**: Identificador del texto previamente cargado.
     
-    Retorna un objeto con el id del texto registrado.
+    Retorna un objeto con el resumen del texto y las entidades principales extraídas.
     """
     try:
         response = servicio_analizar_texto(texto_id)
         return response
+    except IndexError as err:
+        print(f"Error en el id consultado {err=}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, 
+            detail=f"Error al consultar el identificador enviado: {str(err)}"
+        )
     except Exception as err:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, 
@@ -86,7 +118,7 @@ def post_analizar_texto(texto_id: int):
     "/queries",
     response_model=List[ObjetoTextoAnalizar],
     summary="Obtener todos los textos registrados",
-    description="Retorna un listado de todos los textos que han sido registrados en el sistema, incluyendo sus análisis y entidades extraídas (si los tiene).",
+    description="Retorna un listado de todos los textos que han sido registrados en el sistema, incluyendo sus análisis y entidades extraídas (si los tiene). Necesita enviar un token válido.",
     responses={
         200: {
             "description": "Lista de textos obtenida exitosamente",
