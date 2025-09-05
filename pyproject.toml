@@ -2,6 +2,10 @@
 name = "api-extraer-info-texto"
 version = "0.0.1"
 dependencies = [
+  "uvicorn==0.34.0", # Para ejecutar el servicio
+  "fastapi==0.115.11",
+  "python-dotenv",
+  "langchain-aws==0.2.16",
 ]
 requires-python = ">=3.11"
 authors = [
