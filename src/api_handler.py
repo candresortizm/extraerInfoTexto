@@ -1,9 +1,9 @@
 from typing import List
 import uvicorn
-from fastapi import FastAPI, Depends, APIRouter, HTTPException, status
+from fastapi import FastAPI, Depends, APIRouter, HTTPException, status, Body
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.responses import JSONResponse
-from extractor.extractor import registrar_texto, listar_textos, RegistroTexto, ObjetoTextoAnalizar, RespuestaRegistro
+from extractor.servicios import registrar_texto, listar_textos, ObjetoTextoAnalizar, RespuestaRegistro, servicio_analizar_texto
 from extractor.security import verify_token, SECRET_KEY, ALGORITHM
 import jwt
 from datetime import datetime, timezone, timedelta
@@ -22,7 +22,7 @@ v1_router = APIRouter(prefix="/api/v1")
     response_model=RespuestaRegistro,
     status_code=status.HTTP_201_CREATED,
     summary="Registrar un nuevo texto para análisis",
-    description="Registra un nuevo texto en el sistema para posterior análisis de entidades. El texto se almacena en memoria con un ID único.",
+    description="Registra un nuevo texto en el sistema para posterior resumen y análisis de entidades. El texto se almacena en memoria con un ID único.",
     responses={
         201: {
             "description": "Texto registrado exitosamente",
@@ -46,7 +46,7 @@ v1_router = APIRouter(prefix="/api/v1")
         }
     }
 )
-def cargar_texto(texto: RegistroTexto) -> ObjetoTextoAnalizar:
+def cargar_texto(texto: str = Body(..., media_type="text/plain")) -> ObjetoTextoAnalizar:
     """
     Registra un nuevo texto en el sistema para análisis.
     
@@ -55,7 +55,26 @@ def cargar_texto(texto: RegistroTexto) -> ObjetoTextoAnalizar:
     Retorna un objeto con el id del texto registrado.
     """
     try:
+        print("len: "+str(len(texto)))
         response = registrar_texto(texto)
+        return response
+    except Exception as err:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, 
+            detail=f"Error al procesar el texto: {str(err)}"
+        )
+
+@v1_router.post("/document/{texto_id}/analyze")
+def post_analizar_texto(texto_id: int):
+    """
+    Registra un nuevo texto en el sistema para análisis.
+    
+    - **texto**: El texto que se desea analizar posteriormente
+    
+    Retorna un objeto con el id del texto registrado.
+    """
+    try:
+        response = servicio_analizar_texto(texto_id)
         return response
     except Exception as err:
         raise HTTPException(
