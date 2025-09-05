@@ -1,0 +1,14 @@
+[project]
+name = "api-extraer-info-texto"
+version = "0.0.1"
+dependencies = [
+]
+requires-python = ">=3.11"
+authors = [
+  {name = "Andres Ortiz", email = "candresortizm@gmail.com"}
+]
+maintainers = [
+  {name = "Andres Ortiz", email = "candresortizm@gmail.com"}
+]
+description = "Proyecto de una API REST que usa un LLM para extraer un resumen y entidades clave de un texto."
+readme = "README.md"
