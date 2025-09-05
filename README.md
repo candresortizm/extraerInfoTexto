@@ -42,3 +42,9 @@ docker run -p 8000:8000 --env-file .env resumen-api
 Ejecutar el comando:
 
 docker-compose up
+
+# Video:
+
+A continuación se comparte el link del video en el que se explica el código y su uso:
+
+https://drive.google.com/file/d/1sHtl07CpZnrfinl1G8052yX8qGZLZ7eW/view?usp=sharing
