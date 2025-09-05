@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  api-extraer-info-texto:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: info-text-extractor
+    ports:
+      - "8000:8000"
+    environment:
+      - SECRET_JWT_KEY=${SECRET_JWT_KEY}
+      - JWT_ALGORITHM=${JWT_ALGORITHM}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION}
+    env_file:
+      - example.env
+    volumes:
+      - ./src:/app/src
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/docs"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  app-data:
